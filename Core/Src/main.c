@@ -49,6 +49,10 @@ CAN_HandleTypeDef hcan;
 
 I2C_HandleTypeDef hi2c1;
 I2C_HandleTypeDef hi2c2;
+DMA_HandleTypeDef hdma_i2c1_rx;
+DMA_HandleTypeDef hdma_i2c1_tx;
+DMA_HandleTypeDef hdma_i2c2_rx;
+DMA_HandleTypeDef hdma_i2c2_tx;
 
 TIM_HandleTypeDef htim2;
 
@@ -61,6 +65,7 @@ UART_HandleTypeDef huart1;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_I2C2_Init(void);
 static void MX_ADC1_Init(void);
@@ -104,6 +109,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_TIM2_Init();
   MX_I2C2_Init();
   MX_ADC1_Init();
@@ -450,6 +456,31 @@ static void MX_USART1_UART_Init(void)
 
 }
 
+/** 
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void) 
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel4_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+  /* DMA1_Channel5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
+  /* DMA1_Channel6_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
+  /* DMA1_Channel7_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel7_IRQn);
+
+}
+
 /**
   * @brief GPIO Initialization Function
   * @param None
@@ -471,6 +502,9 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(INC_DEC_LED_GPIO_Port, INC_DEC_LED_Pin, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(DEBUG2_GPIO_Port, DEBUG2_Pin, GPIO_PIN_RESET);
+
   /*Configure GPIO pins : ON_LED_Pin DEBUG0_Pin DEBUG1_Pin */
   GPIO_InitStruct.Pin = ON_LED_Pin|DEBUG0_Pin|DEBUG1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -483,13 +517,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = ROTB0_Pin|ROTB1_Pin|ROTBPRESS_Pin|ROTAPRESS_Pin 
                           |ROTA1_Pin|ROTA0_Pin|PBUTTONA_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PBUTTONB_Pin */
   GPIO_InitStruct.Pin = PBUTTONB_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(PBUTTONB_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : INC_DEC_LED_Pin */
@@ -498,6 +532,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(INC_DEC_LED_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : DEBUG2_Pin */
+  GPIO_InitStruct.Pin = DEBUG2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(DEBUG2_GPIO_Port, &GPIO_InitStruct);
 
 }
 

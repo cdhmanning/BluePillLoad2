@@ -8,4 +8,5 @@ void debug_pin_init(void)
 {
 	debug_0(0);
 	debug_1(0);
+	debug_2(0);
 }

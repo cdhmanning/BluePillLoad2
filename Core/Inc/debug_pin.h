@@ -7,6 +7,7 @@
 
 #define debug_0(val) 		HAL_GPIO_WritePin(DEBUG0, val);
 #define debug_1(val) 		HAL_GPIO_WritePin(DEBUG1, val);
+#define debug_2(val) 		HAL_GPIO_WritePin(DEBUG2, val);
 
 void debug_pin_init(void);
 

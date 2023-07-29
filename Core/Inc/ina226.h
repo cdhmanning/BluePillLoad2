@@ -12,9 +12,15 @@ struct ina226_ctl
 	int		 bus_mV;
 	int		 shunt_uV;
 	int 	shunt_mA;
+
+	uint32_t state;
+	uint8_t buffer[2];
+
 };
 
 int ina226_init(struct ina226_ctl *ctl, uint32_t i2c_addr);
 int ina226_update(struct ina226_ctl *ctl);
+void ina226_sm(struct ina226_ctl *ctl);
+void ina226_read_seq_init(struct ina226_ctl *ctl);
 
 #endif

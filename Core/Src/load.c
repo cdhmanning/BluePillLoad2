@@ -2,6 +2,7 @@
 #include "main.h"
 #include "serial.h"
 #include "ina226.h"
+#include "debug_pin.h"
 
 #include "stm32f1xx.h"
 #include "stm32f1xx_hal.h"
@@ -39,7 +40,7 @@ static struct {
 	 */
 	uint32_t mV;
 	uint32_t mA;
-	uint32_t uW;
+	uint32_t mW;
 }control_inputs;
 
 #define PWM_MIN	0
@@ -187,35 +188,7 @@ void load_capture_adc_values(void)
 	control_inputs.I_adc = ADC2->DR & 0x0fff;
 }
 
-static void load_convert_adc_to_real(void)
-{
-	/*
-	 * ADC values come in as 12-bit values.
-	 * Full scale = 3.3V.
-	 */
 
-	/*
-	 * Voltage comes to us via a 10K/1k voltage divider (ie. divide by 11).
-	 * Therefore the actual voltage is:
-	 * mV = 1000 * 3.3 * ADC/2**12 * 11
-	 *    = (1000 * 11 * 3.3) * ADC/2**12
-	 *    = (ADC * 36300)>>12
-	 *    = (ADC * 9075)>>10
-	 */
-	control_inputs.mV = (control_inputs.V_adc * 9075);
-	control_inputs.mV >>=10;
-	/*
-	 * I = V / R. The sense resistor is 0.1R
-	 * mA = 1000 * 3.3 * ADC/2**12 / 0.1
-	 *    = (1000 * 3.3 / 0.1) * ADC/2**12
-	 *    = (ADC * 33000) >> 12
-	 *    = (ADC * 8250)>>10
-	 */
-	control_inputs.mA = (control_inputs.I_adc * 8250);
-	control_inputs.mA >>=10;
-
-	control_inputs.uW = control_inputs.mV * control_inputs.mA;
-}
 
 static void load_check_voltage(void)
 {
@@ -300,7 +273,6 @@ static uint32_t load_calculate_pwm(void)
 static void load_update(void)
 {	uint32_t pwm;
 
-	load_convert_adc_to_real();
 	load_check_voltage();
 
 	if (!control_values.load_on) {
@@ -315,17 +287,18 @@ static void load_update(void)
 	load_pwm_set(pwm);
 }
 
-
+void load_pendsv(void)
+{
+	debug_2(1);
+	load_update();
+	debug_2(0);
+}
 
 void load_tick0(void)
 {
-	/*
-	 * Note the ADC should be read at the start of the ISR so that the system has had
-	 * a whole cycle for the previous changes to take effect.
-	 * We split up the ADC operations so that other things can be done in the tick
-	 * while waiting for the ADC ops to complete.
-	 */
-	//load_start_adc_conversions();
+	debug_2(1);
+	ina226_read_seq_init(&ina226);
+	debug_2(0);
 }
 
 void load_tick1(void)
@@ -334,9 +307,6 @@ void load_tick1(void)
 	button_update(&on_off_button, HAL_GPIO_ReadPin(PBUTTONA));
 
 	HAL_GPIO_WritePin(ON_LED, control_values.load_on ? 0 : 1);
-
-	load_update();
-
 }
 
 struct {
@@ -356,6 +326,7 @@ void load_format_data(void)
 {
 	control_inputs.mA = ina226.shunt_mA;
 	control_inputs.mV = ina226.bus_mV;
+	control_inputs.mW = (control_inputs.mA * control_inputs.mV)/1000;
 
 	strcpy(outstr.mode, control_values.mode_str);
 
@@ -366,7 +337,7 @@ void load_format_data(void)
 
 	sprintf(outstr.mA,"%ldmA", control_inputs.mA);
 	sprintf(outstr.mV,"%5lumV", control_inputs.mV);
-	sprintf(outstr.mW,"%5lumW", control_inputs.uW/1000);
+	sprintf(outstr.mW,"%5lumW", control_inputs.mW);
 }
 
 void load_output_serial(void)
@@ -375,7 +346,7 @@ void load_output_serial(void)
 	char x[10];
 
 	n++;
-	sprintf(x,"%5u ",n);
+	sprintf(x,"%5lu ",n);
 	serial_send_str(x);
 	serial_send_str("Settings ");
 	serial_send_str(outstr.on_off); serial_send_str(" ");
@@ -392,11 +363,13 @@ void load_poll(void)
 	static uint32_t last;
 	uint32_t now = get_tick();
 
+	if (now == last)
+		return;
+
 	if (now <  last + 200)
 		return;
 	last = now;
 
-	ina226_update(&ina226);
 	load_format_data();
 	load_output_serial();
 }
@@ -430,3 +403,20 @@ void load_init(void)
 	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
     serial_send_str("Load started\n");
 }
+
+
+void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
+{
+	if (hi2c == &hi2c1) {
+		ina226_sm(&ina226);
+	}
+}
+
+void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c)
+{
+	if (hi2c == &hi2c1) {
+		ina226_sm(&ina226);
+	}
+}
+
+

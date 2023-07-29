@@ -85,6 +85,8 @@ uint32_t get_tick(void);
 #define PBUTTONB_GPIO_Port GPIOA
 #define INC_DEC_LED_Pin GPIO_PIN_15
 #define INC_DEC_LED_GPIO_Port GPIOA
+#define DEBUG2_Pin GPIO_PIN_5
+#define DEBUG2_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
 #define ON_LED 		ON_LED_GPIO_Port, ON_LED_Pin
@@ -103,6 +105,7 @@ uint32_t get_tick(void);
 
 #define DEBUG0		DEBUG0_GPIO_Port, DEBUG0_Pin
 #define DEBUG1		DEBUG1_GPIO_Port, DEBUG1_Pin
+#define DEBUG2		DEBUG2_GPIO_Port, DEBUG2_Pin
 
 /* HAL peripheral handles declared in main.c */
 extern ADC_HandleTypeDef hadc1;
