@@ -91,6 +91,35 @@ void check_i2c_buses(void)
 	i2c_list_bus(&hi2c2);
 }
 
+void lcd_test(void)
+{
+	 /* Clear buffer */
+	  HD44780_Clear();
+
+	  /* Hide characters */
+	  HD44780_NoDisplay();
+	  HD44780_Cursor();
+	  HD44780_SetCursor(0,0);
+	  HD44780_PrintStr("HELLO STM32!!!");
+	  HD44780_PrintSpecialChar(0);
+
+	  /* Show characters */
+	  HD44780_Display();
+
+	  /* Move position */
+	  HD44780_SetCursor(0, 1);
+	  HD44780_PrintStr("BYE STM32!!!");
+	  HD44780_PrintSpecialChar(1);
+	  HD44780_SetCursor(0, 2);
+	  HD44780_PrintStr("Line 3");
+
+	  HD44780_SetCursor(0, 23);
+	  HD44780_PrintStr("Line 4-8901234567890");
+	  /* Blink cursor */
+	  HD44780_Blink();
+	  HD44780_NoBlink();
+	  HD44780_NoCursor();
+}
 /* USER CODE END 0 */
 
 /**
@@ -141,11 +170,13 @@ int main(void)
 
   debug_pin_init();
   load_init();
-  check_i2c_buses();
+  //check_i2c_buses();
   serial_send_str("ina226 init...\n");
   ina226_init(&ina226, 0x40);
   serial_send_str("lcd init...\n");
   HD44780_Init(&hi2c2, 0x27, 4);
+  serial_send_str("lcd test...\n");
+  lcd_test();
 
 
   serial_send_str("main loop starting\n");
