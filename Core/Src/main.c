@@ -26,6 +26,9 @@
 #include "load.h"
 #include "debug_pin.h"
 #include "ina226.h"
+#include "serial.h"
+#include "i2c_lcd.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -79,6 +82,15 @@ static void MX_USART1_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 struct ina226_ctl ina226;
+
+void check_i2c_buses(void)
+{
+	serial_send_str("Scanning i2c bus hi2c1...\n");
+	i2c_list_bus(&hi2c1);
+	serial_send_str("Scanning i2c bus hi2c2...\n");
+	i2c_list_bus(&hi2c2);
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -124,9 +136,19 @@ int main(void)
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
 
   /* USER CODE BEGIN 2 */
+
+  serial_send_str("main() starting\n");
+
   debug_pin_init();
   load_init();
+  check_i2c_buses();
+  serial_send_str("ina226 init...\n");
   ina226_init(&ina226, 0x40);
+  serial_send_str("lcd init...\n");
+  HD44780_Init(&hi2c2, 0x27, 4);
+
+
+  serial_send_str("main loop starting\n");
 
   /* USER CODE END 2 */
 

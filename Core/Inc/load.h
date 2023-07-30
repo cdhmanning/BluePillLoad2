@@ -11,5 +11,6 @@ void load_tick1(void);
 void load_poll(void);
 
 void load_init(void);
+void load_pendsv(void);
 
 #endif /* INC_LOAD_H_ */
