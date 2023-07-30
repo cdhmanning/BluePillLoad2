@@ -1,3 +1,8 @@
+/*
+ * This code origially from github.com/eziya/STM32_HAL_I2C_HD44780
+ * However it has been modified a bit...
+ */
+
 #include "i2c_lcd.h"
 
 static I2C_HandleTypeDef *hi2c;
@@ -18,7 +23,7 @@ static void PulseEnable(uint8_t);
 static void DelayInit(void);
 static void DelayUS(uint32_t);
 
-uint8_t special1[8] = {
+static uint8_t special0[8] = {
         0b00000,
         0b11001,
         0b11011,
@@ -29,7 +34,7 @@ uint8_t special1[8] = {
         0b00000
 };
 
-uint8_t special2[8] = {
+static uint8_t special1[8] = {
         0b11000,
         0b11000,
         0b00110,
@@ -39,6 +44,25 @@ uint8_t special2[8] = {
         0b00110,
         0b00000
 };
+
+struct special_character_def {
+	uint8_t character_id;
+	uint8_t *bitmap;
+};
+
+struct special_character_def special_list[] = {
+		{.character_id = 0, .bitmap = special0},
+		{.character_id = 1, .bitmap = special1},
+};
+
+
+static void create_special_characters(void)
+{
+	int i;
+
+	for (i = 0; i < (sizeof(special_list)/sizeof(special_list[0])); i++)
+		HD44780_CreateSpecialChar(special_list[i].character_id, special_list[i].bitmap);
+}
 
 void HD44780_Init(I2C_HandleTypeDef *bus, uint8_t addr_7bits, uint8_t rows)
 {
@@ -92,8 +116,7 @@ void HD44780_Init(I2C_HandleTypeDef *bus, uint8_t addr_7bits, uint8_t rows)
   SendCommand(LCD_ENTRYMODESET | dpMode);
   DelayUS(4500);
 
-  //HD44780_CreateSpecialChar(0, special1);
-  //HD44780_CreateSpecialChar(1, special2);
+  create_special_characters();
 
   HD44780_Home();
 }
