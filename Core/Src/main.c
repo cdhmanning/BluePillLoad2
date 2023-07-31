@@ -119,6 +119,8 @@ void lcd_test(void)
 	  HD44780_Blink();
 	  HD44780_NoBlink();
 	  HD44780_NoCursor();
+	  HD44780_SetBacklight(0);
+	  HD44780_SetBacklight(1);
 }
 /* USER CODE END 0 */
 
@@ -175,8 +177,12 @@ int main(void)
   ina226_init(&ina226, 0x40);
   serial_send_str("lcd init...\n");
   HD44780_Init(&hi2c2, 0x27, 4);
-  serial_send_str("lcd test...\n");
-  lcd_test();
+  //serial_send_str("lcd test...\n");
+  //lcd_test();
+
+  HD44780_Display();
+  HD44780_NoCursor();
+  HD44780_SetBacklight(1);
 
 
   serial_send_str("main loop starting\n");

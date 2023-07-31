@@ -3,6 +3,7 @@
 #include "serial.h"
 #include "ina226.h"
 #include "debug_pin.h"
+#include "i2c_lcd.h"
 
 #include "stm32f1xx.h"
 #include "stm32f1xx_hal.h"
@@ -335,7 +336,8 @@ void load_format_data(void)
 	sprintf(outstr.setpt_pwm,"%4dPWM", control_values.setpt_pwm);
 	strcpy(outstr.on_off, control_values.load_on ? "ON " : "OFF");
 
-	sprintf(outstr.mA,"%ldmA", control_inputs.mA);
+	sprintf(outstr.pwm,"PWM%4ld", control_values.last_pwm);
+	sprintf(outstr.mA,"%5ldmA", control_inputs.mA);
 	sprintf(outstr.mV,"%5lumV", control_inputs.mV);
 	sprintf(outstr.mW,"%5lumW", control_inputs.mW);
 }
@@ -358,20 +360,45 @@ void load_output_serial(void)
 	serial_send_str(outstr.mW); serial_send_str("\n");
 }
 
+void load_output_lcd(void)
+{
+	  HD44780_SetCursor(0, 0); HD44780_PrintStr(outstr.on_off);
+	  HD44780_SetCursor(0, 3); HD44780_PrintStr(outstr.pwm);
+	  HD44780_SetCursor(13, 1); HD44780_PrintStr(outstr.mA);
+	  HD44780_SetCursor(13, 2); HD44780_PrintStr(outstr.mV);
+	  HD44780_SetCursor(13, 3); HD44780_PrintStr(outstr.mW);
+}
+
 void load_poll(void)
 {
-	static uint32_t last;
+	static uint32_t last_serial = 0;
+	static uint32_t last_lcd = 0;
+	static uint32_t last_on_off = 0;
+	uint32_t do_serial = 0;
+	uint32_t do_lcd = 0;
 	uint32_t now = get_tick();
 
-	if (now == last)
-		return;
+	if (now >=  last_serial + 200) {
+		last_serial = now;
+		do_serial = 1;
+	}
 
-	if (now <  last + 200)
-		return;
-	last = now;
+	if (!do_serial &&
+		(now >=  last_lcd + 2000 ||
+		 last_on_off != control_values.load_on) ) {
+		last_lcd = now;
+		last_on_off = control_values.load_on;
+		do_lcd = 1;
+	}
 
-	load_format_data();
-	load_output_serial();
+	if (do_serial || do_lcd)
+		load_format_data();
+
+	if (do_serial)
+		load_output_serial();
+
+	if (do_lcd)
+		load_output_lcd();
 }
 
 void load_rot_pb_event(uint32_t val)

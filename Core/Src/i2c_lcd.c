@@ -71,7 +71,7 @@ void HD44780_Init(I2C_HandleTypeDef *bus, uint8_t addr_7bits, uint8_t rows)
 
   dpRows = rows;
 
-  dpBacklight = LCD_BACKLIGHT;
+  dpBacklight = LCD_NOBACKLIGHT;
 
   dpFunction = LCD_4BITMODE | LCD_1LINE | LCD_5x8DOTS;
 
@@ -86,10 +86,10 @@ void HD44780_Init(I2C_HandleTypeDef *bus, uint8_t addr_7bits, uint8_t rows)
 
   /* Wait for initialization */
   DelayInit();
-  HAL_Delay(50);
+  //HAL_Delay(50); LCD must only be initialised 50msec after power up.
 
   ExpanderWrite(dpBacklight);
-  HAL_Delay(1000);
+  HAL_Delay(1);
 
   /* 4bit Mode */
   Write4Bits(0x03 << 4);
