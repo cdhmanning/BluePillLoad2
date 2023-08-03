@@ -27,6 +27,7 @@
 #include "debug_pin.h"
 #include "ina226.h"
 #include "serial.h"
+#include "i2c_check.h"
 #include "i2c_lcd.h"
 
 /* USER CODE END Includes */
@@ -61,6 +62,9 @@ TIM_HandleTypeDef htim2;
 
 UART_HandleTypeDef huart1;
 
+static struct i2c_lcd __lcd;
+struct i2c_lcd *lcd = &__lcd;
+
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -91,36 +95,36 @@ void check_i2c_buses(void)
 	i2c_list_bus(&hi2c2);
 }
 
-void lcd_test(void)
+void lcd_test(struct i2c_lcd *lcd)
 {
 	 /* Clear buffer */
-	  HD44780_Clear();
+	  HD44780_Clear(lcd);
 
 	  /* Hide characters */
-	  HD44780_NoDisplay();
-	  HD44780_Cursor();
-	  HD44780_SetCursor(0,0);
-	  HD44780_PrintStr("HELLO STM32!!!");
-	  HD44780_PrintSpecialChar(0);
+	  HD44780_NoDisplay(lcd);
+	  HD44780_Cursor(lcd);
+	  HD44780_SetCursor(lcd, 0,0);
+	  HD44780_PrintStr(lcd, "HELLO STM32!!!");
+	  HD44780_PrintSpecialChar(lcd, 0);
 
 	  /* Show characters */
-	  HD44780_Display();
+	  HD44780_Display(lcd);
 
 	  /* Move position */
-	  HD44780_SetCursor(0, 1);
-	  HD44780_PrintStr("BYE STM32!!!");
-	  HD44780_PrintSpecialChar(1);
-	  HD44780_SetCursor(0, 2);
-	  HD44780_PrintStr("Line 3");
+	  HD44780_SetCursor(lcd, 0, 1);
+	  HD44780_PrintStr(lcd, "BYE STM32!!!");
+	  HD44780_PrintSpecialChar(lcd, 1);
+	  HD44780_SetCursor(lcd, 0, 2);
+	  HD44780_PrintStr(lcd, "Line 3");
 
-	  HD44780_SetCursor(0, 23);
-	  HD44780_PrintStr("Line 4-8901234567890");
+	  HD44780_SetCursor(lcd, 0, 23);
+	  HD44780_PrintStr(lcd, "Line 4-8901234567890");
 	  /* Blink cursor */
-	  HD44780_Blink();
-	  HD44780_NoBlink();
-	  HD44780_NoCursor();
-	  HD44780_SetBacklight(0);
-	  HD44780_SetBacklight(1);
+	  HD44780_Blink(lcd);
+	  HD44780_NoBlink(lcd);
+	  HD44780_NoCursor(lcd);
+	  HD44780_SetBacklight(lcd,0);
+	  HD44780_SetBacklight(lcd, 1);
 }
 /* USER CODE END 0 */
 
@@ -176,13 +180,14 @@ int main(void)
   serial_send_str("ina226 init...\n");
   ina226_init(&ina226, 0x40);
   serial_send_str("lcd init...\n");
-  HD44780_Init(&hi2c2, 0x27, 4);
+  lcd = &__lcd;
+  HD44780_Init(lcd, &hi2c2, 0x27, 4);
   //serial_send_str("lcd test...\n");
   //lcd_test();
 
-  HD44780_Display();
-  HD44780_NoCursor();
-  HD44780_SetBacklight(1);
+  HD44780_Display(lcd);
+  HD44780_NoCursor(lcd);
+  HD44780_SetBacklight(lcd, 1);
 
 
   serial_send_str("main loop starting\n");
@@ -429,7 +434,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 512-1;
+  htim2.Init.Period = 1024-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)

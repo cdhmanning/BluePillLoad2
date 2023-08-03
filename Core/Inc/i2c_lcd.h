@@ -3,6 +3,16 @@
 
 #include "main.h"
 
+struct i2c_lcd {
+	I2C_HandleTypeDef	*hi2c;
+	uint8_t				i2c_addr;
+	uint8_t 		  	rows;
+	uint8_t				function;
+	uint8_t 		  	control;
+	uint8_t 		  	mode;
+	uint8_t 		  	backlight;
+};
+
 /* Command */
 #define LCD_CLEARDISPLAY 0x01
 #define LCD_RETURNHOME 0x02
@@ -56,32 +66,32 @@
 
 /* Device I2C Address */
 
-void HD44780_Init(I2C_HandleTypeDef *bus, uint8_t addr_7bits, uint8_t rows);
-void HD44780_Clear(void);
-void HD44780_Home(void);
-void HD44780_NoDisplay(void);
-void HD44780_Display(void);
-void HD44780_NoBlink(void);
-void HD44780_Blink(void);
-void HD44780_NoCursor(void);
-void HD44780_Cursor(void);
-void HD44780_ScrollDisplayLeft(void);
-void HD44780_ScrollDisplayRight(void);
-void HD44780_PrintLeft(void);
-void HD44780_PrintRight(void);
-void HD44780_LeftToRight(void);
-void HD44780_RightToLeft(void);
-void HD44780_ShiftIncrement(void);
-void HD44780_ShiftDecrement(void);
-void HD44780_NoBacklight(void);
-void HD44780_Backlight(void);
-void HD44780_AutoScroll(void);
-void HD44780_NoAutoScroll(void);
-void HD44780_CreateSpecialChar(uint8_t, uint8_t[]);
-void HD44780_PrintSpecialChar(uint8_t);
-void HD44780_SetCursor(uint8_t, uint8_t);
-void HD44780_SetBacklight(uint8_t new_val);
-void HD44780_LoadCustomCharacter(uint8_t char_num, uint8_t *rows);
-void HD44780_PrintStr(const char[]);
+void HD44780_Init(struct i2c_lcd *lcd, I2C_HandleTypeDef *bus, uint8_t addr_7bits, uint8_t rows);
+void HD44780_Clear(struct i2c_lcd *lcd);
+void HD44780_Home(struct i2c_lcd *lcd);
+void HD44780_NoDisplay(struct i2c_lcd *lcd);
+void HD44780_Display(struct i2c_lcd *lcd);
+void HD44780_NoBlink(struct i2c_lcd *lcd);
+void HD44780_Blink(struct i2c_lcd *lcd);
+void HD44780_NoCursor(struct i2c_lcd *lcd);
+void HD44780_Cursor(struct i2c_lcd *lcd);
+void HD44780_ScrollDisplayLeft(struct i2c_lcd *lcd);
+void HD44780_ScrollDisplayRight(struct i2c_lcd *lcd);
+void HD44780_PrintLeft(struct i2c_lcd *lcd);
+void HD44780_PrintRight(struct i2c_lcd *lcd);
+void HD44780_LeftToRight(struct i2c_lcd *lcd);
+void HD44780_RightToLeft(struct i2c_lcd *lcd);
+void HD44780_ShiftIncrement(struct i2c_lcd *lcd);
+void HD44780_ShiftDecrement(struct i2c_lcd *lcd);
+void HD44780_NoBacklight(struct i2c_lcd *lcd);
+void HD44780_Backlight(struct i2c_lcd *lcd);
+void HD44780_AutoScroll(struct i2c_lcd *lcd);
+void HD44780_NoAutoScroll(struct i2c_lcd *lcd);
+void HD44780_CreateSpecialChar(struct i2c_lcd *lcd, uint8_t, uint8_t[]);
+void HD44780_PrintSpecialChar(struct i2c_lcd *lcd, uint8_t);
+void HD44780_SetCursor(struct i2c_lcd *lcd, uint8_t, uint8_t);
+void HD44780_SetBacklight(struct i2c_lcd *lcd, uint8_t new_val);
+void HD44780_LoadCustomCharacter(struct i2c_lcd *lcd, uint8_t char_num, uint8_t *rows);
+void HD44780_PrintStr(struct i2c_lcd *lcd, const char[]);
 
 #endif

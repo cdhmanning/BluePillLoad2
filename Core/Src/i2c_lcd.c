@@ -1,25 +1,16 @@
 /*
- * This code origially from github.com/eziya/STM32_HAL_I2C_HD44780
+ * This code originally from github.com/eziya/STM32_HAL_I2C_HD44780
  * However it has been modified a bit...
  */
 
 #include "i2c_lcd.h"
 
-static I2C_HandleTypeDef *hi2c;
-static uint8_t  i2c_addr;
-
-static uint8_t dpFunction;
-static uint8_t dpControl;
-static uint8_t dpMode;
-static uint8_t dpRows;
-static uint8_t dpBacklight;
-
-static void SendCommand(uint8_t);
-static void SendChar(uint8_t);
-static void Send(uint8_t, uint8_t);
-static void Write4Bits(uint8_t);
-static void ExpanderWrite(uint8_t);
-static void PulseEnable(uint8_t);
+static void SendCommand(struct i2c_lcd *lcd, uint8_t);
+static void SendChar(struct i2c_lcd *lcd, uint8_t);
+static void Send(struct i2c_lcd *lcd, uint8_t, uint8_t);
+static void Write4Bits(struct i2c_lcd *lcd, uint8_t);
+static void ExpanderWrite(struct i2c_lcd *lcd, uint8_t);
+static void PulseEnable(struct i2c_lcd *lcd, uint8_t);
 static void DelayInit(void);
 static void DelayUS(uint32_t);
 
@@ -56,242 +47,238 @@ struct special_character_def special_list[] = {
 };
 
 
-static void create_special_characters(void)
+static void create_special_characters(struct i2c_lcd *lcd)
 {
 	int i;
 
 	for (i = 0; i < (sizeof(special_list)/sizeof(special_list[0])); i++)
-		HD44780_CreateSpecialChar(special_list[i].character_id, special_list[i].bitmap);
+		HD44780_CreateSpecialChar(lcd, special_list[i].character_id, special_list[i].bitmap);
 }
 
-void HD44780_Init(I2C_HandleTypeDef *bus, uint8_t addr_7bits, uint8_t rows)
+void HD44780_Init(struct i2c_lcd *lcd, I2C_HandleTypeDef *bus, uint8_t addr_7bits, uint8_t rows)
 {
-  hi2c = bus;
-  i2c_addr = (addr_7bits << 1);
+  lcd->hi2c = bus;
+  lcd->i2c_addr = (addr_7bits << 1);
 
-  dpRows = rows;
+  lcd->rows = rows;
 
-  dpBacklight = LCD_NOBACKLIGHT;
+  lcd->backlight = LCD_NOBACKLIGHT;
 
-  dpFunction = LCD_4BITMODE | LCD_1LINE | LCD_5x8DOTS;
+  lcd->function = LCD_4BITMODE | LCD_1LINE | LCD_5x8DOTS;
 
-  if (dpRows > 1)
+  if (lcd->rows > 1)
   {
-    dpFunction |= LCD_2LINE;
+    lcd->function |= LCD_2LINE;
   }
   else
   {
-    dpFunction |= LCD_5x10DOTS;
+    lcd->function |= LCD_5x10DOTS;
   }
 
   /* Wait for initialization */
   DelayInit();
   //HAL_Delay(50); LCD must only be initialised 50msec after power up.
 
-  ExpanderWrite(dpBacklight);
+  ExpanderWrite(lcd, lcd->backlight);
   HAL_Delay(1);
 
-  /* 4bit Mode */
-  Write4Bits(0x03 << 4);
-  DelayUS(4500);
-
-  Write4Bits(0x03 << 4);
-  DelayUS(4500);
-
-  Write4Bits(0x03 << 4);
-  DelayUS(4500);
-
-  Write4Bits(0x02 << 4);
-  DelayUS(100);
+  /* 4bit Mode.  3x 0x03, the 0x02*/
+  Write4Bits(lcd, 0x03 << 4); DelayUS(4500);
+  Write4Bits(lcd, 0x03 << 4); DelayUS(4500);
+  Write4Bits(lcd, 0x03 << 4); DelayUS(4500);
+  Write4Bits(lcd, 0x02 << 4); DelayUS(100);
 
   /* Display Control */
-  SendCommand(LCD_FUNCTIONSET | dpFunction);
+  SendCommand(lcd, LCD_FUNCTIONSET | lcd->function);
 
-  dpControl = LCD_DISPLAYON | LCD_CURSOROFF | LCD_BLINKOFF;
-  HD44780_Display();
-  HD44780_Clear();
+  lcd->control = LCD_DISPLAYON | LCD_CURSOROFF | LCD_BLINKOFF;
+  HD44780_Display(lcd);
+  HD44780_Clear(lcd);
 
   /* Display Mode */
-  dpMode = LCD_ENTRYLEFT | LCD_ENTRYSHIFTDECREMENT;
-  SendCommand(LCD_ENTRYMODESET | dpMode);
+  lcd->mode = LCD_ENTRYLEFT | LCD_ENTRYSHIFTDECREMENT;
+  SendCommand(lcd, LCD_ENTRYMODESET | lcd->mode);
   DelayUS(4500);
 
-  create_special_characters();
+  create_special_characters(lcd);
 
-  HD44780_Home();
+  HD44780_Home(lcd);
 }
 
-void HD44780_Clear()
+void HD44780_Clear(struct i2c_lcd *lcd)
 {
-  SendCommand(LCD_CLEARDISPLAY);
+  SendCommand(lcd, LCD_CLEARDISPLAY);
   DelayUS(2000);
 }
 
-void HD44780_Home()
+void HD44780_Home(struct i2c_lcd *lcd)
 {
-  SendCommand(LCD_RETURNHOME);
+  SendCommand(lcd, LCD_RETURNHOME);
   DelayUS(2000);
 }
 
-void HD44780_SetCursor(uint8_t col, uint8_t row)
+void HD44780_SetCursor(struct i2c_lcd *lcd, uint8_t col, uint8_t row)
 {
   int row_offsets[] = { 0x00, 0x40, 0x14, 0x54 };
-  if (row >= dpRows)
-  {
-    row = dpRows-1;
-  }
-  SendCommand(LCD_SETDDRAMADDR | (col + row_offsets[row]));
+  if (row >= lcd->rows)
+    row = lcd->rows-1;
+  SendCommand(lcd, LCD_SETDDRAMADDR | (col + row_offsets[row]));
 }
 
-void HD44780_NoDisplay()
+void HD44780_NoDisplay(struct i2c_lcd *lcd)
 {
-  dpControl &= ~LCD_DISPLAYON;
-  SendCommand(LCD_DISPLAYCONTROL | dpControl);
+  lcd->control &= ~LCD_DISPLAYON;
+  SendCommand(lcd, LCD_DISPLAYCONTROL | lcd->control);
 }
 
-void HD44780_Display()
+void HD44780_Display(struct i2c_lcd *lcd)
 {
-  dpControl |= LCD_DISPLAYON;
-  SendCommand(LCD_DISPLAYCONTROL | dpControl);
+  lcd->control |= LCD_DISPLAYON;
+  SendCommand(lcd, LCD_DISPLAYCONTROL | lcd->control);
 }
 
-void HD44780_NoCursor()
+void HD44780_NoCursor(struct i2c_lcd *lcd)
 {
-  dpControl &= ~LCD_CURSORON;
-  SendCommand(LCD_DISPLAYCONTROL | dpControl);
+  lcd->control &= ~LCD_CURSORON;
+  SendCommand(lcd, LCD_DISPLAYCONTROL | lcd->control);
 }
 
-void HD44780_Cursor()
+void HD44780_Cursor(struct i2c_lcd *lcd)
 {
-  dpControl |= LCD_CURSORON;
-  SendCommand(LCD_DISPLAYCONTROL | dpControl);
+  lcd->control |= LCD_CURSORON;
+  SendCommand(lcd, LCD_DISPLAYCONTROL | lcd->control);
 }
 
-void HD44780_NoBlink()
+void HD44780_NoBlink(struct i2c_lcd *lcd)
 {
-  dpControl &= ~LCD_BLINKON;
-  SendCommand(LCD_DISPLAYCONTROL | dpControl);
+  lcd->control &= ~LCD_BLINKON;
+  SendCommand(lcd, LCD_DISPLAYCONTROL | lcd->control);
 }
 
-void HD44780_Blink()
+void HD44780_Blink(struct i2c_lcd *lcd)
 {
-  dpControl |= LCD_BLINKON;
-  SendCommand(LCD_DISPLAYCONTROL | dpControl);
+  lcd->control |= LCD_BLINKON;
+  SendCommand(lcd, LCD_DISPLAYCONTROL | lcd->control);
 }
 
-void HD44780_ScrollDisplayLeft(void)
+void HD44780_ScrollDisplayLeft(struct i2c_lcd *lcd)
 {
-  SendCommand(LCD_CURSORSHIFT | LCD_DISPLAYMOVE | LCD_MOVELEFT);
+  SendCommand(lcd, LCD_CURSORSHIFT | LCD_DISPLAYMOVE | LCD_MOVELEFT);
 }
 
-void HD44780_ScrollDisplayRight(void)
+void HD44780_ScrollDisplayRight(struct i2c_lcd *lcd)
 {
-  SendCommand(LCD_CURSORSHIFT | LCD_DISPLAYMOVE | LCD_MOVERIGHT);
+  SendCommand(lcd, LCD_CURSORSHIFT | LCD_DISPLAYMOVE | LCD_MOVERIGHT);
 }
 
-void HD44780_LeftToRight(void)
+void HD44780_LeftToRight(struct i2c_lcd *lcd)
 {
-  dpMode |= LCD_ENTRYLEFT;
-  SendCommand(LCD_ENTRYMODESET | dpMode);
+  lcd->mode |= LCD_ENTRYLEFT;
+  SendCommand(lcd, LCD_ENTRYMODESET | lcd->mode);
 }
 
-void HD44780_RightToLeft(void)
+void HD44780_RightToLeft(struct i2c_lcd *lcd)
 {
-  dpMode &= ~LCD_ENTRYLEFT;
-  SendCommand(LCD_ENTRYMODESET | dpMode);
+  lcd->mode &= ~LCD_ENTRYLEFT;
+  SendCommand(lcd, LCD_ENTRYMODESET | lcd->mode);
 }
 
-void HD44780_AutoScroll(void)
+void HD44780_AutoScroll(struct i2c_lcd *lcd)
 {
-  dpMode |= LCD_ENTRYSHIFTINCREMENT;
-  SendCommand(LCD_ENTRYMODESET | dpMode);
+  lcd->mode |= LCD_ENTRYSHIFTINCREMENT;
+  SendCommand(lcd, LCD_ENTRYMODESET | lcd->mode);
 }
 
-void HD44780_NoAutoScroll(void)
+void HD44780_NoAutoScroll(struct i2c_lcd *lcd)
 {
-  dpMode &= ~LCD_ENTRYSHIFTINCREMENT;
-  SendCommand(LCD_ENTRYMODESET | dpMode);
+  lcd->mode &= ~LCD_ENTRYSHIFTINCREMENT;
+  SendCommand(lcd, LCD_ENTRYMODESET | lcd->mode);
 }
 
-void HD44780_CreateSpecialChar(uint8_t location, uint8_t charmap[])
+void HD44780_CreateSpecialChar(struct i2c_lcd *lcd, uint8_t location, uint8_t charmap[])
 {
   location &= 0x7;
-  SendCommand(LCD_SETCGRAMADDR | (location << 3));
+  SendCommand(lcd, LCD_SETCGRAMADDR | (location << 3));
   for (int i=0; i<8; i++)
   {
-    SendChar(charmap[i]);
+    SendChar(lcd, charmap[i]);
   }
 }
 
-void HD44780_PrintSpecialChar(uint8_t index)
+void HD44780_PrintSpecialChar(struct i2c_lcd *lcd, uint8_t index)
 {
-  SendChar(index);
+  SendChar(lcd, index);
 }
 
-void HD44780_LoadCustomCharacter(uint8_t char_num, uint8_t *rows)
+void HD44780_LoadCustomCharacter(struct i2c_lcd *lcd, uint8_t char_num, uint8_t *rows)
 {
-  HD44780_CreateSpecialChar(char_num, rows);
+  HD44780_CreateSpecialChar(lcd, char_num, rows);
 }
 
-void HD44780_PrintStr(const char c[])
+void HD44780_PrintStr(struct i2c_lcd *lcd, const char c[])
 {
-  while(*c) SendChar(*c++);
+  while(*c) {
+	  SendChar(lcd, *c);
+	  c++;
+  }
 }
 
-void HD44780_SetBacklight(uint8_t new_val)
+void HD44780_SetBacklight(struct i2c_lcd *lcd, uint8_t new_val)
 {
-  if(new_val) HD44780_Backlight();
-  else HD44780_NoBacklight();
+  if(new_val)
+	  HD44780_Backlight(lcd);
+  else
+	  HD44780_NoBacklight(lcd);
 }
 
-void HD44780_NoBacklight(void)
+void HD44780_NoBacklight(struct i2c_lcd *lcd)
 {
-  dpBacklight=LCD_NOBACKLIGHT;
-  ExpanderWrite(0);
+  lcd->backlight=LCD_NOBACKLIGHT;
+  ExpanderWrite(lcd, 0);
 }
 
-void HD44780_Backlight(void)
+void HD44780_Backlight(struct i2c_lcd *lcd)
 {
-  dpBacklight=LCD_BACKLIGHT;
-  ExpanderWrite(0);
+  lcd->backlight=LCD_BACKLIGHT;
+  ExpanderWrite(lcd, 0);
 }
 
-static void SendCommand(uint8_t cmd)
+static void SendCommand(struct i2c_lcd *lcd, uint8_t cmd)
 {
-  Send(cmd, 0);
+  Send(lcd, cmd, 0);
 }
 
-static void SendChar(uint8_t ch)
+static void SendChar(struct i2c_lcd *lcd, uint8_t ch)
 {
-  Send(ch, RS);
+  Send(lcd, ch, RS);
 }
 
-static void Send(uint8_t value, uint8_t mode)
+static void Send(struct i2c_lcd *lcd, uint8_t value, uint8_t mode)
 {
   uint8_t highnib = value & 0xF0;
   uint8_t lownib = (value<<4) & 0xF0;
-  Write4Bits((highnib)|mode);
-  Write4Bits((lownib)|mode);
+  Write4Bits(lcd, (highnib)|mode);
+  Write4Bits(lcd, (lownib)|mode);
 }
 
-static void Write4Bits(uint8_t value)
+static void Write4Bits(struct i2c_lcd *lcd, uint8_t value)
 {
-  ExpanderWrite(value);
-  PulseEnable(value);
+  ExpanderWrite(lcd, value);
+  PulseEnable(lcd, value);
 }
 
-static void ExpanderWrite(uint8_t _data)
+static void ExpanderWrite(struct i2c_lcd *lcd, uint8_t _data)
 {
-  uint8_t data = _data | dpBacklight;
-  HAL_I2C_Master_Transmit(hi2c, i2c_addr, (uint8_t*)&data, 1, 10);
+  uint8_t data = _data | lcd->backlight;
+  HAL_I2C_Master_Transmit(lcd->hi2c, lcd->i2c_addr, (uint8_t*)&data, 1, 10);
 }
 
-static void PulseEnable(uint8_t _data)
+static void PulseEnable(struct i2c_lcd *lcd, uint8_t _data)
 {
-  ExpanderWrite(_data | ENABLE);
+  ExpanderWrite(lcd, _data | ENABLE);
   DelayUS(20);
 
-  ExpanderWrite(_data & ~ENABLE);
+  ExpanderWrite(lcd, _data & ~ENABLE);
   DelayUS(20);
 }
 

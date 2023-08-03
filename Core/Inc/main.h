@@ -119,6 +119,9 @@ extern TIM_HandleTypeDef htim2;
 
 extern UART_HandleTypeDef huart1;
 
+struct i2c_lcd;
+extern struct i2c_lcd *lcd;
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

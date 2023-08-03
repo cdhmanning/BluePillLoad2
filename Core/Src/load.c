@@ -44,25 +44,28 @@ static struct {
 	uint32_t mW;
 }control_inputs;
 
-#define PWM_MIN	0
-#define PWM_MAX 4000
-#define PWM_INC	50
+#define PWM_MIN			0
+#define PWM_MAX 		1000
+#define PWM_RANGE		(PWM_MAX - PWM_MIN)
+#define PWM_CONTROL_INC	(PWM_RANGE/20)
+#define PWM_SMALL_INC	1
+#define PWM_LARGE_INC	(PWM_RANGE/50)
 
-#define mA_MIN	0
-#define mA_MAX 	1000
-#define mA_INC	50
+#define mA_MIN			0
+#define mA_MAX 			1000
+#define mA_CONTROL_INC	50
 
-#define mV_MIN	0
-#define mV_MAX 	20000
-#define mV_INC	100
+#define mV_MIN			0
+#define mV_MAX 			20000
+#define mV_CONTROL_INC	100
 
 #define mV_OVER_VOLTAGE (mV_MAX + 1000)
 
-#define mW_MIN	0
-#define mW_MAX 	10000
-#define mW_INC	100
+#define mW_MIN			0
+#define mW_MAX 			10000
+#define mW_CONTROL_INC	100
 
-#define uW_MAX	(mW_MAX * 1000)
+#define uW_MAX			(mW_MAX * 1000)
 
 
 extern struct ina226_ctl ina226;
@@ -76,9 +79,9 @@ struct value_controller {
 };
 
 static const struct value_controller vc_list[] = {
-	[LoadModeCurrent] = { "mA",  &control_values.setpt_mA,  mA_MIN,  mA_MAX,  mA_INC},
-	[LoadModePower]   =	{ "mW",  &control_values.setpt_mW, mW_MIN,  mW_MAX,  mW_INC},
-	[LoadModePWM]     =	{ "PWM", &control_values.setpt_pwm, PWM_MIN, PWM_MAX, PWM_INC},
+	[LoadModeCurrent] = { "mA",  &control_values.setpt_mA,  mA_MIN,  mA_MAX,  mA_CONTROL_INC},
+	[LoadModePower]   =	{ "mW",  &control_values.setpt_mW, mW_MIN,  mW_MAX,  mW_CONTROL_INC},
+	[LoadModePWM]     =	{ "PWM", &control_values.setpt_pwm, PWM_MIN, PWM_MAX, PWM_CONTROL_INC},
 };
 
 #define N_VC	(sizeof(vc_list)/ sizeof(vc_list[0]))
@@ -89,7 +92,7 @@ static const struct value_controller vc_list[] = {
 
 void load_pwm_set(uint32_t val)
 {
-	TIM3->CCR1 = val;
+	TIM2->CCR1 = val;
 
 	if (control_values.last_pwm != val) {
 		HAL_GPIO_WritePin(INC_DEC_LED, (control_values.last_pwm < val) ? 0 : 1);
@@ -209,7 +212,7 @@ static uint32_t load_calculate_pwm(void)
 	int new_pwm;
 
 	/*
-	 * Need at least 500mV to prevent calculations overflowing.
+	 * Need at least the minimum to prevent calculations overflowing.
 	 * Just don't conduct if under voltage.
 	 */
 	if (control_values.under_voltage)
@@ -251,15 +254,15 @@ static uint32_t load_calculate_pwm(void)
 	/* Now we need to make that into a PWM value. */
 
 	if(mA_error > 100)
-		pwm_inc = 50;
+		pwm_inc = PWM_LARGE_INC;
 	else if (mA_error > 0)
-		pwm_inc = 1;
+		pwm_inc = PWM_SMALL_INC;
 	else if (mA_error == 0)
 		pwm_inc = 0;
 	else if (mA_error > -100)
-		pwm_inc = -1;
+		pwm_inc = -PWM_SMALL_INC;
 	else /* Smaller than -100 */
-		pwm_inc = -50;
+		pwm_inc = -PWM_LARGE_INC;
 
 	new_pwm = control_values.last_pwm + pwm_inc;
 
@@ -362,11 +365,11 @@ void load_output_serial(void)
 
 void load_output_lcd(void)
 {
-	  HD44780_SetCursor(0, 0); HD44780_PrintStr(outstr.on_off);
-	  HD44780_SetCursor(0, 3); HD44780_PrintStr(outstr.pwm);
-	  HD44780_SetCursor(13, 1); HD44780_PrintStr(outstr.mA);
-	  HD44780_SetCursor(13, 2); HD44780_PrintStr(outstr.mV);
-	  HD44780_SetCursor(13, 3); HD44780_PrintStr(outstr.mW);
+	  HD44780_SetCursor(lcd, 0, 0); HD44780_PrintStr(lcd, outstr.on_off);
+	  HD44780_SetCursor(lcd, 0, 3); HD44780_PrintStr(lcd, outstr.pwm);
+	  HD44780_SetCursor(lcd, 13, 1); HD44780_PrintStr(lcd, outstr.mA);
+	  HD44780_SetCursor(lcd, 13, 2); HD44780_PrintStr(lcd, outstr.mV);
+	  HD44780_SetCursor(lcd, 13, 3); HD44780_PrintStr(lcd, outstr.mW);
 }
 
 void load_poll(void)

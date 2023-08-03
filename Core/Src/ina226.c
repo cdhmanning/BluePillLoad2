@@ -68,6 +68,7 @@ void ina226_read_seq_init(struct ina226_ctl *ctl)
 {
 	int ret;
 
+	(void) ret;
     ret = ina226_select_reg(ctl, INA226_REG_SHUNT);
     ctl->state = 1;
 }
@@ -115,7 +116,7 @@ void ina226_sm(struct ina226_ctl *ctl)
 
 int ina226_update(struct ina226_ctl *ctl)
 {
-	int ret;
+	int ret = 0;
 
 	//ret = ina226_read_reg(ctl, INA226_REG_BUS, (uint16_t *)&ctl->bus_reg);
 	//ret = ina226_read_reg(ctl, INA226_REG_SHUNT, (uint16_t *)&ctl->shunt_reg);
