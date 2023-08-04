@@ -69,12 +69,11 @@ struct i2c_lcd {
 void HD44780_Init(struct i2c_lcd *lcd, I2C_HandleTypeDef *bus, uint8_t addr_7bits, uint8_t rows);
 void HD44780_Clear(struct i2c_lcd *lcd);
 void HD44780_Home(struct i2c_lcd *lcd);
-void HD44780_NoDisplay(struct i2c_lcd *lcd);
-void HD44780_Display(struct i2c_lcd *lcd);
-void HD44780_NoBlink(struct i2c_lcd *lcd);
-void HD44780_Blink(struct i2c_lcd *lcd);
-void HD44780_NoCursor(struct i2c_lcd *lcd);
-void HD44780_Cursor(struct i2c_lcd *lcd);
+
+void HD44780_SetDisplayVisible(struct i2c_lcd *lcd, int val);
+void HD44780_SetCursorVisible(struct i2c_lcd *lcd, int val);
+void HD44780_SetBlink(struct i2c_lcd *lcd, int val);
+
 void HD44780_ScrollDisplayLeft(struct i2c_lcd *lcd);
 void HD44780_ScrollDisplayRight(struct i2c_lcd *lcd);
 void HD44780_PrintLeft(struct i2c_lcd *lcd);
@@ -83,12 +82,12 @@ void HD44780_LeftToRight(struct i2c_lcd *lcd);
 void HD44780_RightToLeft(struct i2c_lcd *lcd);
 void HD44780_ShiftIncrement(struct i2c_lcd *lcd);
 void HD44780_ShiftDecrement(struct i2c_lcd *lcd);
-void HD44780_NoBacklight(struct i2c_lcd *lcd);
-void HD44780_Backlight(struct i2c_lcd *lcd);
 void HD44780_AutoScroll(struct i2c_lcd *lcd);
 void HD44780_NoAutoScroll(struct i2c_lcd *lcd);
+
 void HD44780_CreateSpecialChar(struct i2c_lcd *lcd, uint8_t, uint8_t[]);
 void HD44780_PrintSpecialChar(struct i2c_lcd *lcd, uint8_t);
+
 void HD44780_SetCursor(struct i2c_lcd *lcd, uint8_t, uint8_t);
 void HD44780_SetBacklight(struct i2c_lcd *lcd, uint8_t new_val);
 void HD44780_LoadCustomCharacter(struct i2c_lcd *lcd, uint8_t char_num, uint8_t *rows);

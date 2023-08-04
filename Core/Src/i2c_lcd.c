@@ -92,7 +92,7 @@ void HD44780_Init(struct i2c_lcd *lcd, I2C_HandleTypeDef *bus, uint8_t addr_7bit
   SendCommand(lcd, LCD_FUNCTIONSET | lcd->function);
 
   lcd->control = LCD_DISPLAYON | LCD_CURSOROFF | LCD_BLINKOFF;
-  HD44780_Display(lcd);
+  HD44780_SetDisplayVisible(lcd, 1);
   HD44780_Clear(lcd);
 
   /* Display Mode */
@@ -125,40 +125,30 @@ void HD44780_SetCursor(struct i2c_lcd *lcd, uint8_t col, uint8_t row)
   SendCommand(lcd, LCD_SETDDRAMADDR | (col + row_offsets[row]));
 }
 
-void HD44780_NoDisplay(struct i2c_lcd *lcd)
+static void HD44780_SetControl(struct i2c_lcd *lcd, uint8_t ctl_bit, int val)
 {
-  lcd->control &= ~LCD_DISPLAYON;
-  SendCommand(lcd, LCD_DISPLAYCONTROL | lcd->control);
+	if (val)
+		lcd->control |= ctl_bit;
+	else
+		lcd->control &= ~ctl_bit;
+
+	SendCommand(lcd, LCD_DISPLAYCONTROL | lcd->control);
+
 }
 
-void HD44780_Display(struct i2c_lcd *lcd)
+void HD44780_SetDisplayVisible(struct i2c_lcd *lcd, int val)
 {
-  lcd->control |= LCD_DISPLAYON;
-  SendCommand(lcd, LCD_DISPLAYCONTROL | lcd->control);
+	HD44780_SetControl(lcd, LCD_DISPLAYON, val);
 }
 
-void HD44780_NoCursor(struct i2c_lcd *lcd)
+void HD44780_SetCursorVisible(struct i2c_lcd *lcd, int val)
 {
-  lcd->control &= ~LCD_CURSORON;
-  SendCommand(lcd, LCD_DISPLAYCONTROL | lcd->control);
+	HD44780_SetControl(lcd, LCD_CURSORON, val);
 }
 
-void HD44780_Cursor(struct i2c_lcd *lcd)
+void HD44780_SetBlink(struct i2c_lcd *lcd, int val)
 {
-  lcd->control |= LCD_CURSORON;
-  SendCommand(lcd, LCD_DISPLAYCONTROL | lcd->control);
-}
-
-void HD44780_NoBlink(struct i2c_lcd *lcd)
-{
-  lcd->control &= ~LCD_BLINKON;
-  SendCommand(lcd, LCD_DISPLAYCONTROL | lcd->control);
-}
-
-void HD44780_Blink(struct i2c_lcd *lcd)
-{
-  lcd->control |= LCD_BLINKON;
-  SendCommand(lcd, LCD_DISPLAYCONTROL | lcd->control);
+	HD44780_SetControl(lcd, LCD_BLINKON, val);
 }
 
 void HD44780_ScrollDisplayLeft(struct i2c_lcd *lcd)
@@ -225,21 +215,7 @@ void HD44780_PrintStr(struct i2c_lcd *lcd, const char c[])
 
 void HD44780_SetBacklight(struct i2c_lcd *lcd, uint8_t new_val)
 {
-  if(new_val)
-	  HD44780_Backlight(lcd);
-  else
-	  HD44780_NoBacklight(lcd);
-}
-
-void HD44780_NoBacklight(struct i2c_lcd *lcd)
-{
-  lcd->backlight=LCD_NOBACKLIGHT;
-  ExpanderWrite(lcd, 0);
-}
-
-void HD44780_Backlight(struct i2c_lcd *lcd)
-{
-  lcd->backlight=LCD_BACKLIGHT;
+  lcd->backlight=new_val ? LCD_BACKLIGHT : LCD_NOBACKLIGHT;
   ExpanderWrite(lcd, 0);
 }
 
@@ -263,7 +239,7 @@ static void Send(struct i2c_lcd *lcd, uint8_t value, uint8_t mode)
 
 static void Write4Bits(struct i2c_lcd *lcd, uint8_t value)
 {
-  ExpanderWrite(lcd, value);
+  //ExpanderWrite(lcd, value);
   PulseEnable(lcd, value);
 }
 
@@ -276,10 +252,10 @@ static void ExpanderWrite(struct i2c_lcd *lcd, uint8_t _data)
 static void PulseEnable(struct i2c_lcd *lcd, uint8_t _data)
 {
   ExpanderWrite(lcd, _data | ENABLE);
-  DelayUS(20);
+  //DelayUS(20);
 
   ExpanderWrite(lcd, _data & ~ENABLE);
-  DelayUS(20);
+  //DelayUS(20);
 }
 
 static void DelayInit(void)

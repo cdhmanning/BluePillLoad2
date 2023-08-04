@@ -15,6 +15,7 @@
 typedef enum {
 	LoadModeCurrent = 0,
 	LoadModePower,
+	LoadModeVoltage,
 	LoadModePWM
 } LoadMode;
 
@@ -23,6 +24,7 @@ static struct {
 	uint32_t load_on;
 	int setpt_pwm;
 	int setpt_mA;
+	int setpt_mV;
 	int setpt_mW;
 	LoadMode vc_index;
 	const char *mode_str;
@@ -51,19 +53,24 @@ static struct {
 #define PWM_SMALL_INC	1
 #define PWM_LARGE_INC	(PWM_RANGE/50)
 
+#define PWM_UI_INC		(PWM_RANGE/100)
+
 #define mA_MIN			0
 #define mA_MAX 			1000
 #define mA_CONTROL_INC	50
+#define mA_UI_INC		50
 
 #define mV_MIN			0
 #define mV_MAX 			20000
 #define mV_CONTROL_INC	100
+#define mV_UI_INC		50
 
 #define mV_OVER_VOLTAGE (mV_MAX + 1000)
 
 #define mW_MIN			0
 #define mW_MAX 			10000
 #define mW_CONTROL_INC	100
+#define mW_UI_INC		100
 
 #define uW_MAX			(mW_MAX * 1000)
 
@@ -79,10 +86,12 @@ struct value_controller {
 };
 
 static const struct value_controller vc_list[] = {
-	[LoadModeCurrent] = { "mA",  &control_values.setpt_mA,  mA_MIN,  mA_MAX,  mA_CONTROL_INC},
-	[LoadModePower]   =	{ "mW",  &control_values.setpt_mW, mW_MIN,  mW_MAX,  mW_CONTROL_INC},
-	[LoadModePWM]     =	{ "PWM", &control_values.setpt_pwm, PWM_MIN, PWM_MAX, PWM_CONTROL_INC},
+	[LoadModeCurrent] = { "Current", &control_values.setpt_mA,  mA_MIN,  mA_MAX,  mA_UI_INC},
+	[LoadModePower]   =	{ "Power  ", &control_values.setpt_mW,  mW_MIN,  mW_MAX,  mW_UI_INC},
+	[LoadModeVoltage] =	{ "Voltage", &control_values.setpt_mV,  mV_MIN,  mV_MAX,  mV_UI_INC},
+	[LoadModePWM]     =	{ "PWM    ", &control_values.setpt_pwm, PWM_MIN, PWM_MAX, PWM_UI_INC},
 };
+
 
 #define N_VC	(sizeof(vc_list)/ sizeof(vc_list[0]))
 
@@ -316,7 +325,9 @@ void load_tick1(void)
 struct {
 	char setpt_mA[10];
 	char setpt_mW[10];
+	char setpt_mV[10];
 	char setpt_pwm[10];
+	char setpt_str[10];
 	char mode[10];
 	char on_off[10];
 	char mV[10];
@@ -336,8 +347,17 @@ void load_format_data(void)
 
 	sprintf(outstr.setpt_mA,"%5dmA", control_values.setpt_mA);
 	sprintf(outstr.setpt_mW,"%5dmW", control_values.setpt_mW);
+	sprintf(outstr.setpt_mV,"%5dmV", control_values.setpt_mV);
 	sprintf(outstr.setpt_pwm,"%4dPWM", control_values.setpt_pwm);
-	strcpy(outstr.on_off, control_values.load_on ? "ON " : "OFF");
+
+	switch(control_values.vc_index) {
+	case LoadModeCurrent: strcpy(outstr.setpt_str, outstr.setpt_mA); break;
+	case LoadModeVoltage: strcpy(outstr.setpt_str, outstr.setpt_mV); break;
+	case LoadModePower:   strcpy(outstr.setpt_str, outstr.setpt_mW); break;
+	case LoadModePWM:     strcpy(outstr.setpt_str, outstr.setpt_pwm); break;
+	default: strcpy(outstr.setpt_str, "aak!"); break;
+	}
+	strcpy(outstr.on_off, control_values.load_on ? " ON " : "OFF");
 
 	sprintf(outstr.pwm,"PWM%4ld", control_values.last_pwm);
 	sprintf(outstr.mA,"%5ldmA", control_inputs.mA);
@@ -355,7 +375,9 @@ void load_output_serial(void)
 	serial_send_str(x);
 	serial_send_str("Settings ");
 	serial_send_str(outstr.on_off); serial_send_str(" ");
+	serial_send_str(outstr.mode); serial_send_str(" ");
 	serial_send_str(outstr.setpt_mA); serial_send_str(" ");
+	serial_send_str(outstr.setpt_mV); serial_send_str(" ");
 	serial_send_str(outstr.setpt_mW); serial_send_str(" ");
 	serial_send_str("Readings ");
 	serial_send_str(outstr.mA); serial_send_str(" ");
@@ -365,8 +387,12 @@ void load_output_serial(void)
 
 void load_output_lcd(void)
 {
-	  HD44780_SetCursor(lcd, 0, 0); HD44780_PrintStr(lcd, outstr.on_off);
+	  HD44780_SetCursor(lcd, 0, 0); HD44780_PrintStr(lcd, outstr.mode);
+
+	  HD44780_SetCursor(lcd, 0, 1); HD44780_PrintStr(lcd, outstr.setpt_str);
 	  HD44780_SetCursor(lcd, 0, 3); HD44780_PrintStr(lcd, outstr.pwm);
+
+	  HD44780_SetCursor(lcd, 17, 0); HD44780_PrintStr(lcd, outstr.on_off);
 	  HD44780_SetCursor(lcd, 13, 1); HD44780_PrintStr(lcd, outstr.mA);
 	  HD44780_SetCursor(lcd, 13, 2); HD44780_PrintStr(lcd, outstr.mV);
 	  HD44780_SetCursor(lcd, 13, 3); HD44780_PrintStr(lcd, outstr.mW);

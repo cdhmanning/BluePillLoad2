@@ -62,10 +62,10 @@ TIM_HandleTypeDef htim2;
 
 UART_HandleTypeDef huart1;
 
+/* USER CODE BEGIN PV */
+
 static struct i2c_lcd __lcd;
 struct i2c_lcd *lcd = &__lcd;
-
-/* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
 
@@ -101,14 +101,14 @@ void lcd_test(struct i2c_lcd *lcd)
 	  HD44780_Clear(lcd);
 
 	  /* Hide characters */
-	  HD44780_NoDisplay(lcd);
-	  HD44780_Cursor(lcd);
+	  HD44780_SetDisplayVisible(lcd, 0);
+	  HD44780_SetCursorVisible(lcd, 1);
 	  HD44780_SetCursor(lcd, 0,0);
 	  HD44780_PrintStr(lcd, "HELLO STM32!!!");
 	  HD44780_PrintSpecialChar(lcd, 0);
 
 	  /* Show characters */
-	  HD44780_Display(lcd);
+	  HD44780_SetDisplayVisible(lcd, 1);
 
 	  /* Move position */
 	  HD44780_SetCursor(lcd, 0, 1);
@@ -120,9 +120,10 @@ void lcd_test(struct i2c_lcd *lcd)
 	  HD44780_SetCursor(lcd, 0, 23);
 	  HD44780_PrintStr(lcd, "Line 4-8901234567890");
 	  /* Blink cursor */
-	  HD44780_Blink(lcd);
-	  HD44780_NoBlink(lcd);
-	  HD44780_NoCursor(lcd);
+	  HD44780_SetBlink(lcd,1);
+	  HD44780_SetBlink(lcd, 0);
+	  HD44780_SetCursorVisible(lcd, 1);
+	  HD44780_SetCursorVisible(lcd, 0);
 	  HD44780_SetBacklight(lcd,0);
 	  HD44780_SetBacklight(lcd, 1);
 }
@@ -185,8 +186,8 @@ int main(void)
   //serial_send_str("lcd test...\n");
   //lcd_test();
 
-  HD44780_Display(lcd);
-  HD44780_NoCursor(lcd);
+  HD44780_SetDisplayVisible(lcd, 1);
+  HD44780_SetCursorVisible(lcd, 0);
   HD44780_SetBacklight(lcd, 1);
 
 
@@ -394,7 +395,7 @@ static void MX_I2C2_Init(void)
 
   /* USER CODE END I2C2_Init 1 */
   hi2c2.Instance = I2C2;
-  hi2c2.Init.ClockSpeed = 100000;
+  hi2c2.Init.ClockSpeed = 400000;
   hi2c2.Init.DutyCycle = I2C_DUTYCYCLE_2;
   hi2c2.Init.OwnAddress1 = 0;
   hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
@@ -576,11 +577,17 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : ROTB0_Pin ROTB1_Pin ROTBPRESS_Pin ROTAPRESS_Pin 
-                           ROTA1_Pin ROTA0_Pin PBUTTONA_Pin */
-  GPIO_InitStruct.Pin = ROTB0_Pin|ROTB1_Pin|ROTBPRESS_Pin|ROTAPRESS_Pin 
-                          |ROTA1_Pin|ROTA0_Pin|PBUTTONA_Pin;
+  /*Configure GPIO pins : ROTB0_Pin ROTBPRESS_Pin ROTAPRESS_Pin ROTA0_Pin 
+                           PBUTTONA_Pin */
+  GPIO_InitStruct.Pin = ROTB0_Pin|ROTBPRESS_Pin|ROTAPRESS_Pin|ROTA0_Pin 
+                          |PBUTTONA_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : ROTB_INT_Pin ROTA_INT_Pin */
+  GPIO_InitStruct.Pin = ROTB_INT_Pin|ROTA_INT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
@@ -603,6 +610,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(DEBUG2_GPIO_Port, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 }
 
